@@ -101,7 +101,7 @@ def get_documents():
 @router.get("/storage/stats")
 def get_storage_stats():
     try:
-        from search.vector_store import index, load_chunks
+        from search.vector_store import load_faiss_index, load_chunks
         from db import files_collection
         import os
         from connectors.gdrive import get_drive_service
@@ -115,6 +115,7 @@ def get_storage_stats():
             pass
         
         # Get FAISS vector count
+        index = load_faiss_index()
         vector_count = index.ntotal if index else 0
         
         # See how many files are tracked in the database
@@ -130,8 +131,9 @@ def get_storage_stats():
         
         # Estimate FAISS file size
         faiss_size_bytes = 0
-        if os.path.exists("faiss_index.bin"):
-            faiss_size_bytes = os.path.getsize("faiss_index.bin")
+        faiss_path = "synced_docs/faiss.index"
+        if os.path.exists(faiss_path):
+            faiss_size_bytes = os.path.getsize(faiss_path)
             
         # Get total size of synced files directory
         docs_size_bytes = 0
