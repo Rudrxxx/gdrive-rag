@@ -43,12 +43,6 @@ export function SyncPanel({ onSyncSuccess, autoSync = false }: { onSyncSuccess: 
     };
   }, [status]);
 
-  useEffect(() => {
-    if (autoSync) {
-      handleSync(true); // Force sync on auto-sync (fresh login)
-    }
-  }, [autoSync]);
-
   const handleSync = async (force: boolean = false) => {
     setSyncing(true);
     setStatus("idle");
@@ -63,7 +57,7 @@ export function SyncPanel({ onSyncSuccess, autoSync = false }: { onSyncSuccess: 
       setMessage(res.data.message || `Successfully synced ${res.data.files_processed} files.`);
       
       if (res.data.files && res.data.files.length > 0) {
-        onSyncSuccess(res.data.files.map((f: any) => ({
+        onSyncSuccess(res.data.files.map((f: { id: string; name: string }) => ({
           id: f.id,
           name: f.name,
           status: "Synced"
@@ -80,6 +74,12 @@ export function SyncPanel({ onSyncSuccess, autoSync = false }: { onSyncSuccess: 
       setSyncing(false);
     }
   };
+
+  useEffect(() => {
+    if (autoSync) {
+      queueMicrotask(() => handleSync(true));
+    }
+  }, [autoSync]);
 
   return (
     <div className="flex flex-col gap-2.5">
