@@ -10,9 +10,7 @@ interface StorageStatsData {
   faiss_size_kb: number;
 }
 
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-US");
-}
+function fmt(n: number): string { return n.toLocaleString("en-US"); }
 
 export function StorageStats({ refreshKey }: { refreshKey?: number }) {
   const [stats, setStats] = useState<StorageStatsData | null>(null);
@@ -29,9 +27,7 @@ export function StorageStats({ refreshKey }: { refreshKey?: number }) {
             faiss_size_kb: res.data.faiss_size_kb ?? 0,
           });
         }
-      } catch (err) {
-        console.error("Failed to fetch storage stats:", err);
-      }
+      } catch (err) { console.error("Failed to fetch storage stats:", err); }
     })();
     return () => { cancelled = true; };
   }, [refreshKey]);
@@ -39,25 +35,19 @@ export function StorageStats({ refreshKey }: { refreshKey?: number }) {
   if (!stats) return null;
 
   const items = [
-    { value: formatNumber(stats.vectors), label: "vectors" },
-    { value: formatNumber(stats.docs_count), label: "docs" },
-    { value: `${formatNumber(stats.faiss_size_kb)} KB`, label: "index" },
+    { value: fmt(stats.vectors), label: "Vectors" },
+    { value: fmt(stats.docs_count), label: "Docs" },
+    { value: `${fmt(stats.faiss_size_kb)} KB`, label: "Index" },
   ];
 
   return (
-    <div className="shrink-0 border-t border-white/[0.05] bg-[#050505] px-4 py-3 flex items-center justify-between">
+    <div className="shrink-0 border-t border-gray-200 bg-white px-4 py-3 flex items-center justify-between">
       {items.map((item, idx) => (
         <div key={idx} className="flex flex-col items-center flex-1 relative">
-          <span className="text-[0.7rem] font-semibold text-white/70 leading-none tabular-nums">
-            {item.value}
-          </span>
-          <span className="text-[0.55rem] text-white/30 mt-0.5 uppercase tracking-wider font-medium">
-            {item.label}
-          </span>
-
-          {/* Divider (skip last) */}
+          <span className="text-xs font-medium text-gray-700 tabular-nums">{item.value}</span>
+          <span className="text-[10px] text-gray-400 mt-0.5">{item.label}</span>
           {idx < items.length - 1 && (
-            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-px h-5 bg-white/[0.06]" />
+            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-px h-5 bg-gray-200" />
           )}
         </div>
       ))}

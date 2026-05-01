@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Send, HardDrive, User, Sparkles, FileText, ArrowRight, Trash2 } from "lucide-react";
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,22 +14,13 @@ interface Message {
   sources?: { doc_id: string; name: string; chunk_text: string }[];
 }
 
-/* ── Bouncing dots typing indicator ── */
-function TypingIndicator() {
+function TypingDots() {
   return (
-    <div className="flex items-center gap-1 px-1 py-0.5">
+    <div className="flex items-center gap-1 py-1">
       {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="block w-[6px] h-[6px] rounded-full bg-indigo-400/80"
-          animate={{ y: [0, -6, 0] }}
-          transition={{
-            duration: 0.55,
-            repeat: Infinity,
-            ease: "easeInOut",
-            delay: i * 0.15,
-          }}
-        />
+        <motion.span key={i} className="block w-1.5 h-1.5 rounded-full bg-gray-400"
+          animate={{ y: [0, -4, 0] }}
+          transition={{ duration: 0.5, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 }} />
       ))}
     </div>
   );
@@ -43,237 +34,135 @@ export function ChatInterface() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Load chat history on mount
     const fetchHistory = async () => {
       try {
         const res = await axios.get(`${getApiBaseUrl()}/chat/history?t=${new Date().getTime()}`);
-        if (res.data && res.data.history) {
-          setMessages(res.data.history);
-        }
-      } catch (err) {
-        console.error("Failed to load chat history", err);
-      }
+        if (res.data?.history) setMessages(res.data.history);
+      } catch (err) { console.error("Failed to load chat history", err); }
     };
     fetchHistory();
   }, []);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, loading]);
 
-  useEffect(() => {
-    const handleDocumentSummaryRequest = (e: Event) => {
-      const customEvent = e as CustomEvent<{ docName: string }>;
-      if (customEvent.detail && customEvent.detail.docName) {
-        handleSourceClick(customEvent.detail.docName);
-      }
-    };
+  const handleSourceClick = (docName: string) => {
+    if (loading) return;
+    handleSubmit(undefined, `Please provide a comprehensive summary of the document: ${docName}`);
+  };
 
-    window.addEventListener('requestDocumentSummary', handleDocumentSummaryRequest);
-    return () => {
-      window.removeEventListener('requestDocumentSummary', handleDocumentSummaryRequest);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<{ docName: string }>;
+      if (ce.detail?.docName) handleSourceClick(ce.detail.docName);
     };
+    window.addEventListener('requestDocumentSummary', handler);
+    return () => window.removeEventListener('requestDocumentSummary', handler);
   }, [loading]);
 
   const handleSubmit = async (e?: React.FormEvent, overrideQuery?: string) => {
     if (e) e.preventDefault();
     const userQuery = (overrideQuery || query).trim();
     if (!userQuery) return;
-
     setQuery("");
     setMessages((prev) => [...prev, { role: "user", content: userQuery }]);
     setLoading(true);
-
     try {
       const res = await axios.post(`${getApiBaseUrl()}/ask`, { query: userQuery });
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "ai",
-          content: res.data.answer,
-          sources: res.data.sources,
-        },
-      ]);
+      setMessages((prev) => [...prev, { role: "ai", content: res.data.answer, sources: res.data.sources }]);
     } catch (err: any) {
       let errorMsg = "Sorry, I encountered an error answering that.";
-      
-      // Handle rate limits or other specific errors from the backend
       if (err.response?.data?.detail) {
-        if (typeof err.response.data.detail === 'string' && err.response.data.detail.includes('Rate limit reached')) {
-          errorMsg = "The AI rate limit has been reached for today. Please wait a while or upgrade your API key to continue chatting.";
-        } else {
-          errorMsg = `Error: ${err.response.data.detail}`;
-        }
+        if (typeof err.response.data.detail === 'string' && err.response.data.detail.includes('Rate limit reached'))
+          errorMsg = "The AI rate limit has been reached. Please wait a while.";
+        else errorMsg = `Error: ${err.response.data.detail}`;
       }
-
-      setMessages((prev) => [
-        ...prev,
-        { role: "ai", content: errorMsg },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+      setMessages((prev) => [...prev, { role: "ai", content: errorMsg }]);
+    } finally { setLoading(false); }
   };
 
-  const handleSourceClick = (docName: string) => {
-    if (loading) return;
-    const summaryQuery = `Please provide a comprehensive summary of the document: ${docName}`;
-    handleSubmit(undefined, summaryQuery);
-  };
 
   const handleClearChat = async () => {
     if (loading || messages.length === 0) return;
-    if (!confirmClear) {
-      setConfirmClear(true);
-      setTimeout(() => setConfirmClear(false), 3000);
-      return;
-    }
-    
+    if (!confirmClear) { setConfirmClear(true); setTimeout(() => setConfirmClear(false), 3000); return; }
     try {
       setLoading(true);
       await axios.delete(`${getApiBaseUrl()}/chat`);
-      setMessages([]);
-      setConfirmClear(false);
-    } catch (err) {
-      console.error("Failed to clear chat", err);
-    } finally {
-      setLoading(false);
-    }
+      setMessages([]); setConfirmClear(false);
+    } catch (err) { console.error("Failed to clear chat", err); }
+    finally { setLoading(false); }
   };
 
   return (
-    <div className="flex flex-col h-full w-full relative">
-      {/* Header Area with Clear Chat button */}
-      {messages.length > 0 && (
-        <div className="absolute top-4 right-6 z-20">
-          <button 
-            onClick={handleClearChat}
-            disabled={loading}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all backdrop-blur-md active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${
-              confirmClear 
-                ? "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30" 
-                : "bg-white/[0.03] text-white/50 border border-white/[0.05] hover:bg-white/[0.08] hover:border-white/20 hover:text-white/90"
-            }`}
-          >
+    <div className="flex flex-col h-full w-full">
+      {/* Top bar */}
+      <div className="h-14 border-b border-gray-200 bg-white flex items-center justify-between px-6 shrink-0">
+        <span className="text-sm font-medium text-gray-900">DriveAI</span>
+        {messages.length > 0 && (
+          <button onClick={handleClearChat} disabled={loading}
+            className={`flex items-center gap-1.5 text-xs transition-colors disabled:opacity-50 ${confirmClear ? "text-red-500" : "text-gray-400 hover:text-gray-600"}`}>
             <Trash2 className="w-3.5 h-3.5" />
-            <span>{confirmClear ? "Click again to confirm" : "Clear Chat"}</span>
+            {confirmClear ? "Click again to confirm" : "Clear Chat"}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Messages Area */}
-      <div 
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-6 scroll-smooth custom-scrollbar"
-      >
-        <div className="max-w-4xl mx-auto space-y-8 pb-10">
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-6">
+        <div className="max-w-3xl mx-auto space-y-6">
           {messages.length === 0 ? (
-            <div className="h-[60vh] flex flex-col items-center justify-center text-white/30 space-y-5 opacity-70">
-              <HardDrive className="w-12 h-12 opacity-50" />
-              <div className="text-center">
-                <p className="text-xl font-medium text-white/70 mb-2">Ask anything about your Drive documents</p>
-                <p className="text-sm font-normal max-w-sm text-white/40">
-                  Your synced files are indexed and ready to be queried with AI.
-                </p>
-              </div>
+            <div className="h-[60vh] flex flex-col items-center justify-center">
+              <HardDrive className="w-10 h-10 text-gray-300" />
+              <p className="text-base font-medium text-gray-900 mt-4">Ask anything about your documents</p>
+              <p className="text-sm text-gray-400 mt-1">Your synced files are indexed and ready to query.</p>
             </div>
-          ) : (
-            messages.map((msg, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={`flex gap-5 w-full ${msg.role === "user" ? "justify-end" : ""}`}
-            >
-              {/* AI avatar — left side */}
-              {msg.role === "ai" && (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(99,102,241,0.2)]" style={{ backgroundImage: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                  <Sparkles className="w-4 h-4 text-white" />
+          ) : messages.map((msg, idx) => (
+            <div key={idx} className={`flex ${msg.role === "user" ? "justify-end" : "gap-3"}`}>
+              {msg.role === "ai" && <Sparkles className="w-4 h-4 text-gray-400 shrink-0 mt-1" />}
+              <div className={msg.role === "user"
+                ? "bg-gray-900 text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm max-w-lg"
+                : "flex flex-col gap-2 min-w-0 max-w-2xl"}>
+                <div className={msg.role === "user"
+                  ? "prose prose-sm prose-invert max-w-none"
+                  : "text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none prose-headings:text-gray-900 prose-strong:text-gray-900"}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                 </div>
-              )}
-              
-              <div className={`flex flex-col gap-2 min-w-0 pt-1 ${msg.role === "user" ? "items-end max-w-[85%]" : "w-full"}`}>
-                <div className={`text-[0.95rem] leading-relaxed prose prose-sm prose-invert max-w-none ${
-                  msg.role === "user" 
-                    ? "text-white/90 font-medium prose-p:text-white/90 bg-white/[0.05] rounded-2xl rounded-tr-sm px-5 py-3.5 border border-white/[0.06]" 
-                    : "text-white/80 prose-p:text-white/80 prose-headings:text-white/90 prose-strong:text-white border-l-2 border-indigo-500/40 pl-5"
-                }`}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {msg.content}
-                  </ReactMarkdown>
-                </div>
-
                 {msg.sources && msg.sources.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-3">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     {msg.sources.map((src, i) => (
-                      <div 
-                        key={i} 
-                        onClick={() => handleSourceClick(src.name)}
-                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/[0.15] text-indigo-300/80 hover:text-white hover:bg-indigo-500/20 hover:border-indigo-500/30 transition-all cursor-pointer group/src backdrop-blur-sm active:scale-95"
-                        title="Click to summarize this document"
-                      >
-                        <FileText className="w-3 h-3 group-hover/src:text-white" />
-                        <span className="truncate max-w-[200px] font-medium">{src.name}</span>
-                      </div>
+                      <button key={i} onClick={() => handleSourceClick(src.name)}
+                        className="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition-colors cursor-pointer active:scale-95">
+                        <FileText className="w-3 h-3" /><span className="truncate max-w-[180px]">{src.name}</span>
+                      </button>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* User avatar — right side */}
-              {msg.role === "user" && (
-                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 bg-white/[0.05] text-white/70 border border-white/[0.05]">
-                  <User className="w-4 h-4" />
-                </div>
-              )}
-            </motion.div>
-          ))
-          )}
-          
-          {/* Typing indicator */}
+            </div>
+          ))}
           {loading && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="flex gap-5"
-            >
-              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(99,102,241,0.2)]" style={{ backgroundImage: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <div className="px-5 py-4 rounded-2xl bg-white/[0.03] border border-white/[0.05] rounded-tl-sm flex items-center gap-3 backdrop-blur-md border-l-2 border-l-indigo-500/40">
-                <TypingIndicator />
-                <span className="text-sm text-white/40 font-medium">Analyzing documents…</span>
-              </div>
-            </motion.div>
+            <div className="flex gap-3">
+              <Sparkles className="w-4 h-4 text-gray-400 shrink-0 mt-1" />
+              <TypingDots />
+            </div>
           )}
         </div>
       </div>
 
-      {/* Input Area */}
-      <div className="p-6 pt-0 pb-8 relative z-10 bg-gradient-to-t from-[#030303] via-[#030303]/80 to-transparent">
-        <div className="max-w-4xl mx-auto relative">
-          <form onSubmit={handleSubmit} className="relative flex items-center shadow-[0_0_40px_rgba(0,0,0,0.8)] rounded-2xl">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
+      {/* Input */}
+      <div className="border-t border-gray-200 bg-white px-6 py-4 shrink-0">
+        <div className="max-w-3xl mx-auto">
+          <form onSubmit={handleSubmit} className="relative flex items-center gap-2">
+            <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
               placeholder="Ask about your documents… Press Enter to send"
-              className="w-full bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 text-white placeholder-white/30 rounded-2xl pl-6 pr-16 py-4 focus:outline-none focus:ring-1 focus:ring-indigo-500/30 focus:border-indigo-500/20 transition-all text-[0.95rem]"
-            />
-            <button
-              type="submit"
-              disabled={!query.trim() || loading}
-              className="absolute right-2.5 w-10 h-10 rounded-xl text-white flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 transition-all shadow-[0_2px_16px_rgba(99,102,241,0.3)]"
-              style={{ backgroundImage: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
-            >
+              className="flex-1 border border-gray-200 rounded-xl bg-white text-sm text-gray-900 px-4 py-3 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 placeholder-gray-400 transition-all" />
+            <button type="submit" disabled={!query.trim() || loading}
+              className="bg-gray-900 text-white rounded-lg w-9 h-9 flex items-center justify-center hover:bg-gray-800 disabled:opacity-40 disabled:hover:bg-gray-900 transition-colors shrink-0">
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-          <p className="text-center text-[10px] text-white/30 mt-3 font-medium">
-            LLaMA 3.3 can make mistakes. Always verify important information.
-          </p>
+          <p className="text-center text-[10px] text-gray-400 mt-2">LLaMA 3.3 can make mistakes. Always verify important information.</p>
         </div>
       </div>
     </div>

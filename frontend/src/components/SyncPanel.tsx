@@ -82,18 +82,15 @@ export function SyncPanel({ onSyncSuccess, autoSync = false }: { onSyncSuccess: 
   };
 
   return (
-    <div className="flex flex-col gap-3 relative">
+    <div className="flex flex-col gap-2.5">
       {/* Connected indicator */}
-      <div className="flex items-center gap-2 px-1 mb-1">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
-        </span>
-        <span className="text-[0.7rem] font-medium text-white/40 tracking-wide">Connected</span>
+      <div className="flex items-center gap-2 mb-1">
+        <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+        <span className="text-xs text-gray-500">Connected</span>
       </div>
 
-      <p className="text-white/40 text-[0.75rem] leading-relaxed font-normal px-1 mb-2">
-        Fetch PDFs and TXTs from your Drive. Leave blank for root, or paste a folder link below.
+      <p className="text-xs text-gray-400 leading-relaxed">
+        Fetch PDFs and TXTs from your Drive. Leave blank for root, or paste a folder link.
       </p>
 
       <input
@@ -102,31 +99,26 @@ export function SyncPanel({ onSyncSuccess, autoSync = false }: { onSyncSuccess: 
         value={folderUrl}
         onChange={(e) => setFolderUrl(e.target.value)}
         disabled={syncing}
-        className="w-full bg-[#0A0A0A]/90 backdrop-blur-xl border border-white/10 text-white placeholder-white/30 rounded-xl px-3 py-2 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 focus:border-indigo-500/30 transition-all text-xs"
+        className="w-full border border-gray-200 bg-white text-gray-900 placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900 transition-all text-xs"
       />
 
-      <motion.button
+      <button
         onClick={() => handleSync(false)}
         disabled={syncing}
-        animate={syncing ? { boxShadow: ["0 4px 24px rgba(99,102,241,0.25)", "0 4px 32px rgba(139,92,246,0.45)", "0 4px 24px rgba(99,102,241,0.25)"] } : {}}
-        transition={syncing ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" } : {}}
-        className="w-full py-2.5 rounded-xl font-medium text-sm flex items-center justify-center gap-2.5 transition-all relative overflow-hidden disabled:opacity-70 disabled:cursor-not-allowed text-white hover:brightness-110 group"
-        style={{ backgroundImage: "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)" }}
+        className="w-full py-2 rounded-lg font-medium text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-60 disabled:cursor-not-allowed bg-gray-900 text-white hover:bg-gray-800"
       >
-        {/* Hover shimmer */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out pointer-events-none" />
         {syncing ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : (
           <RefreshCw className="w-3.5 h-3.5" />
         )}
         {syncing ? "Syncing..." : "Sync Drive"}
-      </motion.button>
+      </button>
       
       <button
         onClick={() => handleSync(true)}
         disabled={syncing}
-        className="w-full py-2 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-white/[0.03] text-white/70 border border-white/10 hover:bg-white/5 hover:text-white"
+        className="w-full py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
       >
         Force Sync All Files
       </button>
@@ -143,25 +135,25 @@ export function SyncPanel({ onSyncSuccess, autoSync = false }: { onSyncSuccess: 
           }
         }}
         disabled={syncing}
-        className="w-full py-2 rounded-xl font-medium text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed bg-transparent text-white/40 hover:text-white hover:bg-white/[0.05]"
+        className="w-full py-1 text-xs text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
       >
-        <LogOut className="w-3.5 h-3.5" />
+        <LogOut className="w-3 h-3" />
         Logout &amp; Disconnect
       </button>
 
       {status !== "idle" && (
         <motion.div 
-          initial={{ opacity: 0, y: 5 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`mt-2 p-3 rounded-xl flex items-start gap-2.5 text-xs ${
-            status === "success" ? "bg-white/[0.05] border border-white/10 text-white/80" : 
-            status === "processing" ? "bg-indigo-500/10 border border-indigo-500/20 text-indigo-300" :
-            "bg-red-500/10 border border-red-500/20 text-red-400"
+          className={`mt-1 p-2.5 rounded-lg flex items-start gap-2 text-xs ${
+            status === "success" ? "bg-green-50 border border-green-200 text-green-700" : 
+            status === "processing" ? "bg-blue-50 border border-blue-200 text-blue-700" :
+            "bg-red-50 border border-red-200 text-red-700"
           }`}
         >
-          {status === "success" ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-white/50" /> : 
-           status === "processing" ? <Loader2 className="w-3.5 h-3.5 shrink-0 mt-0.5 animate-spin text-indigo-400" /> :
-           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
+          {status === "success" ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5 text-green-500" /> : 
+           status === "processing" ? <Loader2 className="w-3.5 h-3.5 shrink-0 mt-0.5 animate-spin text-blue-500" /> :
+           <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-500" />}
           <span className="leading-relaxed">{message}</span>
         </motion.div>
       )}
