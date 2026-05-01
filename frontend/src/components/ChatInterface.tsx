@@ -47,6 +47,27 @@ export function ChatInterface() {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages, loading]);
 
+  const handleSubmit = async (e?: React.FormEvent, overrideQuery?: string) => {
+    if (e) e.preventDefault();
+    const userQuery = (overrideQuery || query).trim();
+    if (!userQuery) return;
+    setQuery("");
+    setMessages((prev) => [...prev, { role: "user", content: userQuery }]);
+    setLoading(true);
+    try {
+      const res = await axios.post(`${getApiBaseUrl()}/ask`, { query: userQuery });
+      setMessages((prev) => [...prev, { role: "ai", content: res.data.answer, sources: res.data.sources }]);
+    } catch (err: unknown) {
+      let errorMsg = "Sorry, I encountered an error answering that.";
+      if (axios.isAxiosError(err) && err.response?.data?.detail) {
+        if (typeof err.response.data.detail === 'string' && err.response.data.detail.includes('Rate limit reached'))
+          errorMsg = "The AI rate limit has been reached. Please wait a while.";
+        else errorMsg = `Error: ${err.response.data.detail}`;
+      }
+      setMessages((prev) => [...prev, { role: "ai", content: errorMsg }]);
+    } finally { setLoading(false); }
+  };
+
   const handleSourceClick = (docName: string) => {
     if (loading) return;
     handleSubmit(undefined, `Please provide a comprehensive summary of the document: ${docName}`);
@@ -60,27 +81,6 @@ export function ChatInterface() {
     window.addEventListener('requestDocumentSummary', handler);
     return () => window.removeEventListener('requestDocumentSummary', handler);
   }, [loading]);
-
-  const handleSubmit = async (e?: React.FormEvent, overrideQuery?: string) => {
-    if (e) e.preventDefault();
-    const userQuery = (overrideQuery || query).trim();
-    if (!userQuery) return;
-    setQuery("");
-    setMessages((prev) => [...prev, { role: "user", content: userQuery }]);
-    setLoading(true);
-    try {
-      const res = await axios.post(`${getApiBaseUrl()}/ask`, { query: userQuery });
-      setMessages((prev) => [...prev, { role: "ai", content: res.data.answer, sources: res.data.sources }]);
-    } catch (err: any) {
-      let errorMsg = "Sorry, I encountered an error answering that.";
-      if (err.response?.data?.detail) {
-        if (typeof err.response.data.detail === 'string' && err.response.data.detail.includes('Rate limit reached'))
-          errorMsg = "The AI rate limit has been reached. Please wait a while.";
-        else errorMsg = `Error: ${err.response.data.detail}`;
-      }
-      setMessages((prev) => [...prev, { role: "ai", content: errorMsg }]);
-    } finally { setLoading(false); }
-  };
 
 
   const handleClearChat = async () => {

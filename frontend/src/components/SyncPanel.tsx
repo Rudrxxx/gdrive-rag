@@ -72,9 +72,9 @@ export function SyncPanel({ onSyncSuccess, autoSync = false }: { onSyncSuccess: 
       
       // Clean up URL to remove ?sync=true
       router.replace("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setStatus("error");
-      const errorMsg = err.response?.data?.detail;
+      const errorMsg = axios.isAxiosError(err) ? err.response?.data?.detail : undefined;
       setMessage(errorMsg || "An error occurred during sync. The server might have timed out because the files were too large. Please click Sync again to continue.");
     } finally {
       setSyncing(false);
@@ -129,7 +129,7 @@ export function SyncPanel({ onSyncSuccess, autoSync = false }: { onSyncSuccess: 
             await axios.post(`${getApiBaseUrl()}/disconnect-drive`);
             await new Promise(r => setTimeout(r, 500));
             router.push("/");
-          } catch (err: any) {
+          } catch {
             setStatus("error");
             setMessage("Failed to logout.");
           }
