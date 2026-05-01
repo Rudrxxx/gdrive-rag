@@ -1,0 +1,50 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap');
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(210 14% 17%);
+  --color-muted-foreground: hsl(184 5% 55%);
+  --color-border: hsl(0 0% 90%);
+
+  --font-display: 'Instrument Serif', serif;
+  --font-body: 'Inter', sans-serif;
+}
+
+@layer base {
+  * {
+    border-color: hsl(0 0% 90%);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* ── Dashboard-specific dark scrollbar ── */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ── Dot grid pattern for landing hero ── */
+.dot-grid {
+  background-image: radial-gradient(circle, hsl(0 0% 80%) 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.4;
+}
