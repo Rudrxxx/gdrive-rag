@@ -77,6 +77,27 @@ def auth_login():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.get("/documents")
+def get_documents():
+    """Return all synced documents from MongoDB."""
+    try:
+        from db import files_collection
+        cursor = files_collection.find({})
+        documents = []
+        for d in cursor:
+            doc = {
+                "id": d.get("file_id", d.get("id", "")),
+                "name": d.get("name", "Unknown"),
+                "status": "synced"
+            }
+            if doc["id"]:
+                documents.append(doc)
+        return {"documents": documents}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.get("/storage/stats")
 def get_storage_stats():
     try:
